@@ -2,47 +2,45 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chúc mừng 20/10</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-  canvas { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+  :root { --bg: #000; --hint: #666; box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
   .card {
-    position: fixed; left: 50%; bottom: 5vh; z-index: 1;
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 4vh); z-index: 1;
     width: min(760px, 90vw); box-sizing: border-box;
-    padding: 28px 24px 24px; text-align: center;
+    padding: 22px 18px 20px; text-align: center;
     font-family: "Segoe UI", Arial, Tahoma, "DejaVu Sans", sans-serif;
-    background: #fff0f6; border: 5px solid #ff69b4; border-radius: 28px;
-    box-shadow: 0 0 40px rgba(255, 105, 180, .45), inset 0 0 0 8px #fff0f6, inset 0 0 0 10px #ffb6d7;
+    background: #fff0f6; border: 4px solid #ff69b4; border-radius: 26px;
+    box-shadow: 0 0 40px rgba(255, 105, 180, .45), inset 0 0 0 7px #fff0f6, inset 0 0 0 9px #ffb6d7;
     opacity: 0; transform: translate(-50%, 60px);
     transition: opacity 1.2s ease, transform 1.2s cubic-bezier(.2, .8, .2, 1);
   }
   .card.show { opacity: 1; transform: translate(-50%, 0); }
-  .card h2 { margin: 0 0 14px; font-size: clamp(18px, 3.2vw, 30px); color: #d61e6e; }
-  .card p  { margin: 6px 0; font-size: clamp(14px, 2.2vw, 22px); color: #5a2846; line-height: 1.4; }
-  .card .sign { margin-top: 16px; font-size: clamp(13px, 2vw, 20px); color: #e6508c; }
-  .hint { position: fixed; right: 12px; top: 8px; z-index: 3; color: #555; font: 12px Arial, sans-serif; }
+  .card h2 { margin: 0 0 12px; font-size: clamp(18px, 3.2vw, 30px); color: #d61e6e; line-height: 1.3; }
+  .card p  { margin: 6px 0; font-size: clamp(14px, 2.2vw, 22px); color: #5a2846; line-height: 1.45; }
+  .card .sign { margin-top: 14px; font-size: clamp(13px, 2vw, 20px); color: #e6508c; }
+  .hint { position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 8px);
+          text-align: center; z-index: 3; color: var(--hint); font: 12px Arial, sans-serif; }
 </style>
 </head>
 <body>
 <div class="card" id="card">
   <h2>Chúc mừng ngày Phụ nữ Việt Nam 20/10</h2>
   <p>Chúc bạn luôn xinh đẹp, rạng rỡ và tràn đầy năng lượng.</p>
-  <p>Mong mỗi ngày của bạn đều ngập tràn niềm vui,</p>
-  <p>sức khỏe, hạnh phúc và những điều tuyệt vời nhất!</p>
-  <p class="sign">- Gửi tặng bạn với tất cả yêu thương -</p>
+  <p>Mong mỗi ngày của bạn đều ngập tràn niềm vui, sức khỏe, hạnh phúc và những điều tuyệt vời nhất!</p>
+  <p class="sign">– Gửi tặng bạn với tất cả yêu thương –</p>
 </div>
 <canvas id="c"></canvas>
-<div class="hint">Nhấn R hoặc chạm màn hình để chạy lại</div>
+<div class="hint">Chạm màn hình để xem lại</div>
 
 <script>
-// ===== CẤU HÌNH =====
-const TEXT = "chúc mừng ngày 20/10";
 const FONT = '"Segoe UI", Arial, Tahoma, "DejaVu Sans", sans-serif';
-const MAX_PARTICLES = 4500, SAMPLE_STEP = 3;
+const MAX_PARTICLES = 4500;
 const T_FLOAT = 1.5, T_GATHER = 3.0, T_HOLD = 1.2, T_SHIFT = 1.2;
 const PINKS = ["#ff69b4", "#ff1493", "#ff96c8", "#ffb6c1", "#ff007f", "#ff78aa"];
-// ====================
 
 const cv = document.getElementById("c"), ctx = cv.getContext("2d");
 const card = document.getElementById("card");
@@ -52,17 +50,22 @@ const easeInOut = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 
 const rand = (a, b) => a + Math.random() * (b - a);
 
 function buildTargets() {
-  let size = Math.min(140, H * 0.2);
+  const narrow = W < 600;
+  const lines = narrow ? ["chúc mừng", "ngày 20/10"] : ["chúc mừng ngày 20/10"];
   const off = document.createElement("canvas"), o = off.getContext("2d");
+  let size = narrow ? Math.min(120, W * 0.2) : Math.min(140, H * 0.2);
   const setFont = () => (o.font = `bold ${size}px ${FONT}`);
+  const widest = () => Math.max(...lines.map(l => o.measureText(l).width));
   setFont();
-  while (o.measureText(TEXT).width > W * 0.9 && size > 16) { size -= 2; setFont(); }
-  const tw = Math.ceil(o.measureText(TEXT).width) + 20, th = Math.ceil(size * 1.5);
+  while (widest() > W * 0.9 && size > 16) { size -= 2; setFont(); }
+  const lh = size * 1.35;
+  const tw = Math.ceil(widest()) + 20, th = Math.ceil(lh * lines.length + size * 0.4);
   off.width = tw; off.height = th; setFont();
-  o.textBaseline = "middle"; o.fillStyle = "#fff"; o.fillText(TEXT, 10, th / 2);
+  o.textBaseline = "middle"; o.textAlign = "center"; o.fillStyle = "#fff";
+  lines.forEach((l, i) => o.fillText(l, tw / 2, size * 0.2 + lh * (i + 0.5)));
   const data = o.getImageData(0, 0, tw, th).data;
   const ox = (W - tw) / 2, oy = H * 0.5 - th / 2;
-  let step = SAMPLE_STEP, pts;
+  let step = narrow ? 2 : 3, pts;
   while (true) {
     pts = [];
     for (let y = 0; y < th; y += step)
@@ -75,18 +78,18 @@ function buildTargets() {
 }
 
 function init() {
-  DPR = window.devicePixelRatio || 1;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = innerWidth; H = innerHeight;
   cv.width = W * DPR; cv.height = H * DPR;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  shiftMax = Math.min(170, H * 0.22);
+  shiftMax = Math.min(170, H * 0.2);
   particles = buildTargets().map(([tx, ty]) => ({
     x: rand(0, W), y: rand(0, H), vx: rand(-.6, .6), vy: rand(-.6, .6),
     tx, ty, color: PINKS[(Math.random() * PINKS.length) | 0],
     r: [1, 1, 1.5][(Math.random() * 3) | 0], speed: rand(.025, .07), ph: rand(0, Math.PI * 2)
   }));
-  hearts = Array.from({ length: 18 }, () => ({
-    x: rand(0, W), y: rand(H, H + 400), s: rand(.6, 1.6), v: rand(.4, 1)
+  hearts = Array.from({ length: 16 }, () => ({
+    x: rand(0, W), y: rand(H, H + 400), s: rand(.5, 1.3), v: rand(.4, 1)
   }));
   card.classList.remove("show");
   start = performance.now();
@@ -94,7 +97,7 @@ function init() {
 
 function heart(x, y, s) {
   ctx.beginPath();
-  for (let i = 0; i <= 360; i += 6) {
+  for (let i = 0; i <= 360; i += 8) {
     const a = i * Math.PI / 180;
     const px = 16 * Math.sin(a) ** 3;
     const py = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a));
@@ -124,7 +127,8 @@ function frame(now) {
       p.y += (p.ty - shift - p.y) * k;
     }
     const tw = .85 + .15 * Math.sin(t * 5 + p.ph);
-    ctx.globalAlpha = .18 * tw; ctx.fillStyle = p.color;
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = .18 * tw;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 2, 0, 6.2832); ctx.fill();
     ctx.globalAlpha = tw;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
@@ -144,9 +148,9 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-addEventListener("keydown", e => { if (e.key.toLowerCase() === "r") init(); });
 addEventListener("pointerdown", init);
-let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(init, 200); });
+addEventListener("keydown", e => { if (e.key.toLowerCase() === "r") init(); });
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(init, 250); });
 init(); requestAnimationFrame(frame);
 </script>
 </body>
